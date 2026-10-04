@@ -35,10 +35,10 @@ input,select{width:100%;background:#0a0e0c;border:1px solid #27302b;color:white;
 .save{width:100%;margin-top:7px}
 .sync{font-size:12px;color:#87918a;margin-top:9px}
 .day{margin:10px 0}
-.tx{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #1b221e;padding:12px 0}
+.tx{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border-top:1px solid #1b221e;padding:12px 0}.tx>div:last-child{text-align:right;min-width:132px}.tx>div:last-child>div{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
 .tx:first-of-type{border-top:0}
 .tx small{display:block;color:#818b84}
-.tx button{padding:7px 9px;background:#151a17;color:#aab3ad;font-size:11px;margin-left:5px}
+.tx button{padding:9px 11px;background:#151a17;color:#aab3ad;font-size:11px;margin:0;min-width:58px}@media(max-width:390px){.tx{grid-template-columns:1fr}.tx>div:last-child{text-align:left;min-width:0}.tx>div:last-child>div{justify-content:flex-start}.tx button{min-width:72px}}
 .empty{text-align:center;color:#78827b;padding:30px 0}
 </style>
 </head>
