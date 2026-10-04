@@ -40,7 +40,7 @@ input,select{width:100%;background:#0a0e0c;border:1px solid #27302b;color:white;
 .tx small{display:block;color:#818b84}
 .tx button{padding:9px 11px;background:#151a17;color:#aab3ad;font-size:11px;margin:0;min-width:58px}@media(max-width:390px){.tx{grid-template-columns:1fr}.tx>div:last-child{text-align:left;min-width:0}.tx>div:last-child>div{justify-content:flex-start}.tx button{min-width:72px}}
 .empty{text-align:center;color:#78827b;padding:30px 0}
-</style>
+.danger{background:#5b171d!important;color:#fff!important;border-color:#ff3045!important}</style>
 </head>
 
 <body>
@@ -339,52 +339,28 @@ function saveTx(){
   persist(x);
 }
 
+let pendingDelete=null;
 async function del(id){
-
-  if(!confirm(
-    'Excluir este lançamento?'
-  ))return;
-
-  const old=items.slice();
-
-  items=items.filter(
-    x=>String(x.id)!==String(id)
-  );
-
-  localStorage.setItem(
-    LK,
-    JSON.stringify(items)
-  );
-
-  render();
-
-  try{
-
-    const r=await fetch(
-      SUP+'?id=eq.'+encodeURIComponent(id),
-      {
-        method:'DELETE',
-        headers
-      }
-    );
-
-    if(!r.ok)throw new Error('delete');
-
-    await syncNow();
-
-  }catch(e){
-
-    items=old;
-
-    localStorage.setItem(
-      LK,
-      JSON.stringify(items)
-    );
-
+  if(String(pendingDelete)!==String(id)){
+    pendingDelete=id;
     render();
-
-    document.getElementById('sync')
-      .textContent='Sincronização pendente';
+    setTimeout(()=>{if(String(pendingDelete)===String(id)){pendingDelete=null;render();}},3500);
+    return;
+  }
+  pendingDelete=null;
+  const old=items.slice();
+  items=items.filter(x=>String(x.id)!==String(id));
+  localStorage.setItem(LK,JSON.stringify(items));
+  render();
+  try{
+    const r=await fetch(SUP+'?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers});
+    if(!r.ok)throw new Error('delete');
+    await syncNow();
+  }catch(e){
+    items=old;
+    localStorage.setItem(LK,JSON.stringify(items));
+    render();
+    document.getElementById('sync').textContent='Sincronização pendente';
   }
 }
 
@@ -519,9 +495,7 @@ function render(){
                 '\',\''+
                 x.id+
               '\')">Editar</button>'+
-              '<button onclick="del(\''+
-                x.id+
-              '\')">Excluir</button>'+
+              '<button onclick="del(\''+x.id+'\')" class="'+(String(pendingDelete)===String(x.id)?'danger':'')+'">'+(String(pendingDelete)===String(x.id)?'Confirmar':'Excluir')+'</button>'+
             '</div>'+
           '</div>'+
         '</div>'
