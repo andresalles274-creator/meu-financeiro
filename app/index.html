@@ -16,7 +16,7 @@ main{max-width:520px;margin:auto;padding:24px 16px 90px}
 .ey{color:#43f56f;font-size:12px;letter-spacing:.18em;font-weight:800}
 h1{margin:5px 0 2px;font-size:30px}
 .sub,.label{color:#8c958f}
-.sub{margin:0 0 20px}\n.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.headerText{min-width:0}.brandLogo{width:72px;height:72px;flex:0 0 72px;margin-right:12%;filter:drop-shadow(0 0 7px #20ff5a66)}@media(max-width:380px){.brandLogo{width:62px;height:62px;flex-basis:62px;margin-right:7%}}
+.sub{margin:0 0 20px}\n.header{margin-bottom:20px}.balanceLine{display:flex;align-items:center}.balanceLine .balance{margin-right:0}.brandLogo{width:72px;height:72px;margin-left:54px;flex:0 0 72px;filter:drop-shadow(0 0 7px #20ff5a66)}@media(max-width:380px){.brandLogo{width:62px;height:62px;flex-basis:62px;margin-left:34px}}
 .card,.metric,.day{background:#0c100e;border:1px solid #1b2420;border-radius:22px;padding:18px;box-shadow:0 14px 40px #0008}
 .label{font-size:13px}
 .balance{font-size:38px;font-weight:800;margin:6px 0}
@@ -52,7 +52,7 @@ input,select{width:100%;background:#0a0e0c;border:1px solid #27302b;color:white;
 
 <section class="card">
 <div class="label">Saldo geral</div>
-<div class="balance" id="saldo">R$ 0,00</div>
+<div class="balanceLine"><div class="balance" id="saldo">R$ 0,00</div><img class="brandLogo" src="../finance-logo.svg?v=2" alt="Logo Meu Financeiro"></div>
 <div class="label">Desde o primeiro lançamento</div>
 <div class="sync" id="sync">Sincronizando…</div>
 </section>
