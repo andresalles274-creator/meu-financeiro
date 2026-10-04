@@ -465,7 +465,7 @@ function render(){
       x=>(g[x.date]??=[]).push(x)
     );
 
-  history.innerHTML=
+  document.getElementById('history').innerHTML=
     Object.keys(g).length
       ?''
       :'<div class="empty">Nenhum lançamento ainda.</div>';
@@ -527,7 +527,7 @@ function render(){
         '</div>'
       ).join('');
 
-    history.appendChild(e);
+    document.getElementById('history').appendChild(e);
   }
 }
 
