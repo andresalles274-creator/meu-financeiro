@@ -10,8 +10,6 @@ public class FinanceWidget extends AppWidgetProvider{
   v.setTextViewText(R.id.wOut,"Saiu hoje\n"+p.getString("out","R$ 0,00"));
   v.setTextViewText(R.id.wRecent,p.getString("recent","Abra o app para sincronizar"));
   Intent open=new Intent(c,MainActivity.class);
-  v.setOnClickPendingIntent(R.id.wBalance,PendingIntent.getActivity(c,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT));
-  Intent open=new Intent(c,MainActivity.class);
   PendingIntent po=PendingIntent.getActivity(c,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
   v.setOnClickPendingIntent(R.id.wBalance,po);
   v.setOnClickPendingIntent(R.id.wRecent,po);
