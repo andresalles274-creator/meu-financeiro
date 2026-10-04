@@ -1,14 +1,600 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#050706"><link rel="manifest" href="manifest.json?v=1"><link rel="icon" href="icon.svg?v=1"><link rel="apple-touch-icon" href="icon.svg?v=1"><title>Meu Financeiro</title><style>
-*{box-sizing:border-box}body{margin:0;background:#050706;color:#f5f7f5;font-family:system-ui,-apple-system,sans-serif}main{max-width:520px;margin:auto;padding:24px 16px 90px}.ey{color:#43f56f;font-size:12px;letter-spacing:.18em;font-weight:800}h1{margin:5px 0 2px;font-size:30px}.sub,.label{color:#8c958f}.sub{margin:0 0 20px}.card,.metric,.day{background:#0c100e;border:1px solid #1b2420;border-radius:22px;padding:18px;box-shadow:0 14px 40px #0008}.label{font-size:13px}.balance{font-size:38px;font-weight:800;margin:6px 0}.green{color:#43f56f}.red{color:#ff4d5e}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}.metric b{display:block;font-size:20px;margin-top:6px}.today{margin:18px 0}.row{display:flex;justify-content:space-between;gap:10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}button{border:0;border-radius:16px;padding:15px;font-weight:800;background:#43f56f;color:#041006}button.exp{background:#181d1a;color:#ff6674;border:1px solid #3a2025}.form{display:none;margin:14px 0}.form.on{display:block}input,select{width:100%;background:#0a0e0c;border:1px solid #27302b;color:white;border-radius:14px;padding:14px;margin:5px 0}.save{width:100%;margin-top:7px}.sync{font-size:12px;color:#87918a;margin-top:9px}.day{margin:10px 0}.tx{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #1b221e;padding:12px 0}.tx:first-of-type{border-top:0}.tx small{display:block;color:#818b84}.tx button{padding:7px 9px;background:#151a17;color:#aab3ad;font-size:11px;margin-left:5px}.empty{text-align:center;color:#78827b;padding:30px 0}</style></head><body><main><div class="ey">CONTROLE DIÁRIO</div><h1>Meu Financeiro</h1><p class="sub">Entradas e gastos, sem complicação.</p><section class="card"><div class="label">Saldo geral</div><div class="balance" id="saldo">R$ 0,00</div><div class="label">Desde o primeiro lançamento</div><div class="sync" id="sync">Sincronizando…</div></section><div class="grid"><div class="metric"><span class="label">Total que entrou</span><b class="green" id="tin">R$ 0,00</b></div><div class="metric"><span class="label">Total que saiu</span><b class="red" id="tout">R$ 0,00</b></div></div><section class="card today"><div class="row"><b>Movimentação de hoje</b><span class="label" id="date"></span></div><div class="grid"><div><span class="label">Entrou</span><b class="green" id="hin">R$ 0,00</b></div><div><span class="label">Saiu</span><b class="red" id="hout">R$ 0,00</b></div></div><div class="row"><span class="label">Saldo do dia</span><b id="hsaldo">R$ 0,00</b></div></section><div class="actions"><button onclick="openForm('in')">+ Adicionar entrada</button><button class="exp" onclick="openForm('out')">− Adicionar gasto</button></div><div class="card form" id="form"><b id="ft">Novo lançamento</b><input id="desc" placeholder="Descrição"><input id="value" inputmode="decimal" placeholder="Valor (R$)"><input id="d" type="date"><select id="cat"><option>Uber</option><option>Consultoria</option><option>C+A</option><option>Combustível</option><option>Alimentação</option><option>Manutenção</option><option>Contas</option><option>Compras</option><option>Produtos</option><option>Outros</option></select><button class="save" onclick="saveTx()">Salvar lançamento</button></div><h3>Histórico</h3><div id="history"></div></main><script>
-const SUP='https://dpjrlnwppojxhtbrymgc.supabase.co/rest/v1/finance_transactions',KEY='sb_publishable_mwSu8ulI6M3ucvvGZY96eA_--7RuVPy',LK='meu-financeiro-v1';let items=[],type='in',editId=null;try{items=JSON.parse(localStorage.getItem(LK)||'[]');if(!Array.isArray(items))items=[]}catch(e){items=[]}
-const BOOT='finance-cloud-boot-v2';
-const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),today=()=>new Date().toLocaleDateString('en-CA'),headers={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'};
-async function cloudGet(){let r=await fetch(SUP+'?select=*&order=tx_date.desc,updated_at.desc',{headers,cache:'no-store'});if(!r.ok)throw new Error('cloud_get');let a=await r.json();return a.map(x=>({id:x.id,type:x.type,desc:x.description,value:Number(x.value),date:x.tx_date,cat:x.category,time:x.tx_time}))}
-async function uploadAll(){if(!items.length)return;let rows=items.map(x=>({id:String(x.id),type:x.type,description:x.desc,value:Number(x.value),tx_date:x.date,category:x.cat||'Outros',tx_time:x.time||'',updated_at:new Date().toISOString()}));let r=await fetch(SUP+'?on_conflict=id',{method:'POST',headers:{...headers,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});if(!r.ok)throw new Error('cloud_put')}
-async function syncNow(){let el=document.getElementById('sync');try{let remote=await cloudGet();items=remote;localStorage.setItem(LK,JSON.stringify(items));render();el.textContent='Sincronizado na nuvem'}catch(e){el.textContent='Sincronização pendente'}}
-async function persist(x){localStorage.setItem(LK,JSON.stringify(items));render();let el=document.getElementById('sync');el.textContent='Sincronizando…';try{let row={id:String(x.id),type:x.type,description:x.desc,value:Number(x.value),tx_date:x.date,category:x.cat||'Outros',tx_time:x.time||'',updated_at:new Date().toISOString()};let r=await fetch(SUP+'?on_conflict=id',{method:'POST',headers:{...headers,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row)});if(!r.ok)throw 0;await syncNow()}catch(e){el.textContent='Salvo neste aparelho • sincronização pendente'}}
-function openForm(t,id){type=t;editId=id||null;form.classList.add('on');d.value=today();if(id){let x=items.find(y=>String(y.id)===String(id));if(x){desc.value=x.desc;value.value=x.value;d.value=x.date;cat.value=x.cat;type=x.type;ft.textContent='Editar lançamento'}}else{desc.value='';value.value='';ft.textContent=t==='in'?'Nova entrada':'Novo gasto'}form.scrollIntoView({behavior:'smooth',block:'center'})}
-function saveTx(){let v=parseFloat(value.value.replace(',','.'));if(!desc.value.trim()||!v)return alert('Preencha a descrição e o valor.');let x;if(editId){x=items.find(y=>String(y.id)===String(editId));Object.assign(x,{desc:desc.value.trim(),value:v,date:d.value,cat:cat.value,type})}else{x={id:Date.now(),desc:desc.value.trim(),value:v,date:d.value||today(),cat:cat.value,type,time:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};items.push(x)}form.classList.remove('on');editId=null;persist(x)}
-async function del(id){if(!confirm('Excluir este lançamento?'))return;let old=items.slice();items=items.filter(x=>String(x.id)!==String(id));localStorage.setItem(LK,JSON.stringify(items));render();try{let r=await fetch(SUP+'?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers});if(!r.ok)throw 0;document.getElementById('sync').textContent='Sincronizado na nuvem'}catch(e){items=old;localStorage.setItem(LK,JSON.stringify(items));render();document.getElementById('sync').textContent='Sincronização pendente'}}
-function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function render(){let a=items.filter(x=>x.type==='in').reduce((s,x)=>s+Number(x.value),0),b=items.filter(x=>x.type==='out').reduce((s,x)=>s+Number(x.value),0);saldo.textContent=brl(a-b);saldo.className='balance '+(a-b<0?'red':'green');tin.textContent=brl(a);tout.textContent=brl(b);let td=today(),i=items.filter(x=>x.date===td&&x.type==='in').reduce((s,x)=>s+Number(x.value),0),o=items.filter(x=>x.date===td&&x.type==='out').reduce((s,x)=>s+Number(x.value),0);hin.textContent=brl(i);hout.textContent=brl(o);hsaldo.textContent=brl(i-o);date.textContent=new Date().toLocaleDateString('pt-BR');let g={};items.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||Number(b.id)-Number(a.id)).forEach(x=>(g[x.date]??=[]).push(x));history.innerHTML=Object.keys(g).length?'':'<div class="empty">Nenhum lançamento ainda.</div>';for(const [day,arr] of Object.entries(g)){let e=document.createElement('section');e.className='day';let inn=arr.filter(x=>x.type==='in').reduce((s,x)=>s+Number(x.value),0),out=arr.filter(x=>x.type==='out').reduce((s,x)=>s+Number(x.value),0);e.innerHTML='<div class="row"><b>'+day.split('-').reverse().join('/')+'</b><small class="label">'+brl(inn-out)+'</small></div>'+arr.map(x=>'<div class="tx"><div><b>'+esc(x.desc)+'</b><small>'+esc(x.cat||'Outros')+' • '+esc(x.time||'')+'</small></div><div><b class="'+(x.type==='in'?'green':'red')+'">'+(x.type==='in'?'+ ':'− ')+brl(x.value)+'</b><div><button onclick="openForm(\''+x.type+'\',\''+x.id+'\')">Editar</button><button onclick="del(\''+x.id+'\')">Excluir</button></div></div></div>').join('');history.appendChild(e)}}render();async function boot(){let el=document.getElementById('sync');try{let remote=await cloudGet();let local=items.slice();if(!sessionStorage.getItem(BOOT)&&local.length>remote.length){el.textContent='Sincronizando dados deste aparelho…';await uploadAll();sessionStorage.setItem(BOOT,'1');remote=await cloudGet()}items=remote;localStorage.setItem(LK,JSON.stringify(items));render();el.textContent='Sincronizado na nuvem'}catch(e){el.textContent='Sincronização pendente'}}setTimeout(boot,800);setInterval(syncNow,5000);</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050706">
+<link rel="manifest" href="manifest.json?v=1">
+<link rel="icon" href="icon.svg?v=1">
+<link rel="apple-touch-icon" href="icon.svg?v=1">
+<title>Meu Financeiro</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#050706;color:#f5f7f5;font-family:system-ui,-apple-system,sans-serif}
+main{max-width:520px;margin:auto;padding:24px 16px 90px}
+.ey{color:#43f56f;font-size:12px;letter-spacing:.18em;font-weight:800}
+h1{margin:5px 0 2px;font-size:30px}
+.sub,.label{color:#8c958f}
+.sub{margin:0 0 20px}
+.card,.metric,.day{background:#0c100e;border:1px solid #1b2420;border-radius:22px;padding:18px;box-shadow:0 14px 40px #0008}
+.label{font-size:13px}
+.balance{font-size:38px;font-weight:800;margin:6px 0}
+.green{color:#43f56f}
+.red{color:#ff4d5e}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.metric b{display:block;font-size:20px;margin-top:6px}
+.today{margin:18px 0}
+.row{display:flex;justify-content:space-between;gap:10px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+button{border:0;border-radius:16px;padding:15px;font-weight:800;background:#43f56f;color:#041006}
+button.exp{background:#181d1a;color:#ff6674;border:1px solid #3a2025}
+.form{display:none;margin:14px 0}
+.form.on{display:block}
+input,select{width:100%;background:#0a0e0c;border:1px solid #27302b;color:white;border-radius:14px;padding:14px;margin:5px 0}
+.save{width:100%;margin-top:7px}
+.sync{font-size:12px;color:#87918a;margin-top:9px}
+.day{margin:10px 0}
+.tx{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #1b221e;padding:12px 0}
+.tx:first-of-type{border-top:0}
+.tx small{display:block;color:#818b84}
+.tx button{padding:7px 9px;background:#151a17;color:#aab3ad;font-size:11px;margin-left:5px}
+.empty{text-align:center;color:#78827b;padding:30px 0}
+</style>
+</head>
+
+<body>
+<main>
+
+<div class="ey">CONTROLE DIÁRIO</div>
+<h1>Meu Financeiro</h1>
+<p class="sub">Entradas e gastos, sem complicação.</p>
+
+<section class="card">
+<div class="label">Saldo geral</div>
+<div class="balance" id="saldo">R$ 0,00</div>
+<div class="label">Desde o primeiro lançamento</div>
+<div class="sync" id="sync">Sincronizando…</div>
+</section>
+
+<div class="grid">
+<div class="metric">
+<span class="label">Total que entrou</span>
+<b class="green" id="tin">R$ 0,00</b>
+</div>
+
+<div class="metric">
+<span class="label">Total que saiu</span>
+<b class="red" id="tout">R$ 0,00</b>
+</div>
+</div>
+
+<section class="card today">
+<div class="row">
+<b>Movimentação de hoje</b>
+<span class="label" id="date"></span>
+</div>
+
+<div class="grid">
+<div>
+<span class="label">Entrou</span>
+<b class="green" id="hin">R$ 0,00</b>
+</div>
+
+<div>
+<span class="label">Saiu</span>
+<b class="red" id="hout">R$ 0,00</b>
+</div>
+</div>
+
+<div class="row">
+<span class="label">Saldo do dia</span>
+<b id="hsaldo">R$ 0,00</b>
+</div>
+</section>
+
+<div class="actions">
+<button onclick="openForm('in')">+ Adicionar entrada</button>
+<button class="exp" onclick="openForm('out')">− Adicionar gasto</button>
+</div>
+
+<div class="card form" id="form">
+<b id="ft">Novo lançamento</b>
+
+<input id="desc" placeholder="Descrição">
+<input id="value" inputmode="decimal" placeholder="Valor (R$)">
+<input id="d" type="date">
+
+<select id="cat">
+<option>Uber</option>
+<option>Consultoria</option>
+<option>C+A</option>
+<option>Combustível</option>
+<option>Alimentação</option>
+<option>Manutenção</option>
+<option>Contas</option>
+<option>Compras</option>
+<option>Produtos</option>
+<option>Outros</option>
+</select>
+
+<button class="save" onclick="saveTx()">Salvar lançamento</button>
+</div>
+
+<h3>Histórico</h3>
+<div id="history"></div>
+
+</main>
+
+<script>
+const SUP='https://dpjrlnwppojxhtbrymgc.supabase.co/rest/v1/finance_transactions';
+const KEY='sb_publishable_mwSu8ulI6M3ucvvGZY96eA_--7RuVPy';
+const LK='meu-financeiro-v1';
+
+let items=[];
+let type='in';
+let editId=null;
+
+try{
+  items=JSON.parse(localStorage.getItem(LK)||'[]');
+  if(!Array.isArray(items))items=[];
+}catch(e){
+  items=[];
+}
+
+const brl=n=>Number(n||0).toLocaleString('pt-BR',{
+  style:'currency',
+  currency:'BRL'
+});
+
+const today=()=>new Date().toLocaleDateString('en-CA');
+
+const headers={
+  'apikey':KEY,
+  'Authorization':'Bearer '+KEY,
+  'Content-Type':'application/json'
+};
+
+async function cloudGet(){
+  const r=await fetch(
+    SUP+'?select=*&order=tx_date.desc,updated_at.desc',
+    {
+      headers,
+      cache:'no-store'
+    }
+  );
+
+  if(!r.ok)throw new Error('cloud_get');
+
+  const a=await r.json();
+
+  return a.map(x=>({
+    id:x.id,
+    type:x.type,
+    desc:x.description,
+    value:Number(x.value),
+    date:x.tx_date,
+    cat:x.category,
+    time:x.tx_time
+  }));
+}
+
+async function sendRows(rows){
+  if(!rows.length)return;
+
+  const data=rows.map(x=>({
+    id:String(x.id),
+    type:x.type,
+    description:x.desc,
+    value:Number(x.value),
+    tx_date:x.date,
+    category:x.cat||'Outros',
+    tx_time:x.time||'',
+    updated_at:new Date().toISOString()
+  }));
+
+  const r=await fetch(
+    SUP+'?on_conflict=id',
+    {
+      method:'POST',
+      headers:{
+        ...headers,
+        'Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify(data)
+    }
+  );
+
+  if(!r.ok)throw new Error('cloud_put');
+}
+
+async function syncNow(){
+  const el=document.getElementById('sync');
+
+  try{
+    const remote=await cloudGet();
+
+    items=remote;
+
+    localStorage.setItem(
+      LK,
+      JSON.stringify(items)
+    );
+
+    render();
+
+    el.textContent='Sincronizado na nuvem';
+
+  }catch(e){
+    el.textContent='Sincronização pendente';
+  }
+}
+
+async function persist(x){
+  localStorage.setItem(
+    LK,
+    JSON.stringify(items)
+  );
+
+  render();
+
+  const el=document.getElementById('sync');
+  el.textContent='Sincronizando…';
+
+  try{
+    await sendRows([x]);
+    await syncNow();
+
+  }catch(e){
+    el.textContent='Salvo neste aparelho • sincronização pendente';
+  }
+}
+
+function openForm(t,id){
+  type=t;
+  editId=id||null;
+
+  form.classList.add('on');
+  d.value=today();
+
+  if(id){
+    const x=items.find(
+      y=>String(y.id)===String(id)
+    );
+
+    if(x){
+      desc.value=x.desc;
+      value.value=x.value;
+      d.value=x.date;
+      cat.value=x.cat;
+      type=x.type;
+      ft.textContent='Editar lançamento';
+    }
+
+  }else{
+    desc.value='';
+    value.value='';
+    ft.textContent=
+      t==='in'
+      ?'Nova entrada'
+      :'Novo gasto';
+  }
+
+  form.scrollIntoView({
+    behavior:'smooth',
+    block:'center'
+  });
+}
+
+function saveTx(){
+  const v=parseFloat(
+    value.value.replace(',','.')
+  );
+
+  if(!desc.value.trim()||!v){
+    return alert(
+      'Preencha a descrição e o valor.'
+    );
+  }
+
+  let x;
+
+  if(editId){
+
+    x=items.find(
+      y=>String(y.id)===String(editId)
+    );
+
+    Object.assign(x,{
+      desc:desc.value.trim(),
+      value:v,
+      date:d.value,
+      cat:cat.value,
+      type
+    });
+
+  }else{
+
+    x={
+      id:Date.now(),
+      desc:desc.value.trim(),
+      value:v,
+      date:d.value||today(),
+      cat:cat.value,
+      type,
+      time:new Date().toLocaleTimeString(
+        'pt-BR',
+        {
+          hour:'2-digit',
+          minute:'2-digit'
+        }
+      )
+    };
+
+    items.push(x);
+  }
+
+  form.classList.remove('on');
+  editId=null;
+
+  persist(x);
+}
+
+async function del(id){
+
+  if(!confirm(
+    'Excluir este lançamento?'
+  ))return;
+
+  const old=items.slice();
+
+  items=items.filter(
+    x=>String(x.id)!==String(id)
+  );
+
+  localStorage.setItem(
+    LK,
+    JSON.stringify(items)
+  );
+
+  render();
+
+  try{
+
+    const r=await fetch(
+      SUP+'?id=eq.'+encodeURIComponent(id),
+      {
+        method:'DELETE',
+        headers
+      }
+    );
+
+    if(!r.ok)throw new Error('delete');
+
+    await syncNow();
+
+  }catch(e){
+
+    items=old;
+
+    localStorage.setItem(
+      LK,
+      JSON.stringify(items)
+    );
+
+    render();
+
+    document.getElementById('sync')
+      .textContent='Sincronização pendente';
+  }
+}
+
+function esc(s){
+  return String(s||'').replace(
+    /[&<>"']/g,
+    c=>({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#39;'
+    }[c])
+  );
+}
+
+function render(){
+
+  const a=items
+    .filter(x=>x.type==='in')
+    .reduce(
+      (s,x)=>s+Number(x.value),
+      0
+    );
+
+  const b=items
+    .filter(x=>x.type==='out')
+    .reduce(
+      (s,x)=>s+Number(x.value),
+      0
+    );
+
+  saldo.textContent=brl(a-b);
+
+  saldo.className=
+    'balance '+(a-b<0?'red':'green');
+
+  tin.textContent=brl(a);
+  tout.textContent=brl(b);
+
+  const td=today();
+
+  const i=items
+    .filter(
+      x=>x.date===td&&x.type==='in'
+    )
+    .reduce(
+      (s,x)=>s+Number(x.value),
+      0
+    );
+
+  const o=items
+    .filter(
+      x=>x.date===td&&x.type==='out'
+    )
+    .reduce(
+      (s,x)=>s+Number(x.value),
+      0
+    );
+
+  hin.textContent=brl(i);
+  hout.textContent=brl(o);
+  hsaldo.textContent=brl(i-o);
+
+  date.textContent=
+    new Date().toLocaleDateString('pt-BR');
+
+  const g={};
+
+  items
+    .slice()
+    .sort(
+      (a,b)=>
+        (b.date||'').localeCompare(a.date||'')
+        ||Number(b.id)-Number(a.id)
+    )
+    .forEach(
+      x=>(g[x.date]??=[]).push(x)
+    );
+
+  history.innerHTML=
+    Object.keys(g).length
+      ?''
+      :'<div class="empty">Nenhum lançamento ainda.</div>';
+
+  for(const [day,arr] of Object.entries(g)){
+
+    const e=document.createElement('section');
+
+    e.className='day';
+
+    const inn=arr
+      .filter(x=>x.type==='in')
+      .reduce(
+        (s,x)=>s+Number(x.value),
+        0
+      );
+
+    const out=arr
+      .filter(x=>x.type==='out')
+      .reduce(
+        (s,x)=>s+Number(x.value),
+        0
+      );
+
+    e.innerHTML=
+      '<div class="row"><b>'+
+      day.split('-').reverse().join('/')+
+      '</b><small class="label">'+
+      brl(inn-out)+
+      '</small></div>'+
+      arr.map(x=>
+        '<div class="tx">'+
+          '<div>'+
+            '<b>'+esc(x.desc)+'</b>'+
+            '<small>'+
+              esc(x.cat||'Outros')+
+              ' • '+
+              esc(x.time||'')+
+            '</small>'+
+          '</div>'+
+          '<div>'+
+            '<b class="'+
+              (x.type==='in'?'green':'red')+
+            '">'+
+              (x.type==='in'?'+ ':'− ')+
+              brl(x.value)+
+            '</b>'+
+            '<div>'+
+              '<button onclick="openForm(\''+
+                x.type+
+                '\',\''+
+                x.id+
+              '\')">Editar</button>'+
+              '<button onclick="del(\''+
+                x.id+
+              '\')">Excluir</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>'
+      ).join('');
+
+    history.appendChild(e);
+  }
+}
+
+render();
+
+/*
+  Na primeira abertura:
+  1. lê os dados que já existem no aparelho;
+  2. consulta o Supabase;
+  3. envia somente lançamentos locais que ainda
+     não existem na nuvem;
+  4. depois passa a usar a nuvem como fonte central.
+*/
+async function boot(){
+
+  const el=document.getElementById('sync');
+
+  try{
+
+    const local=items.slice();
+
+    let remote=await cloudGet();
+
+    const remoteIds=new Set(
+      remote.map(x=>String(x.id))
+    );
+
+    const missing=local.filter(
+      x=>!remoteIds.has(String(x.id))
+    );
+
+    if(missing.length){
+
+      el.textContent=
+        'Enviando lançamentos pendentes…';
+
+      await sendRows(missing);
+
+      remote=await cloudGet();
+    }
+
+    items=remote;
+
+    localStorage.setItem(
+      LK,
+      JSON.stringify(items)
+    );
+
+    render();
+
+    el.textContent='Sincronizado na nuvem';
+
+  }catch(e){
+
+    el.textContent=
+      'Sincronização pendente';
+  }
+}
+
+setTimeout(boot,800);
+
+/*
+  Mantém celular e tablet atualizados.
+*/
+setInterval(syncNow,5000);
+
+</script>
+</body>
+</html>
