@@ -425,8 +425,13 @@ function render(){
   hout.textContent=brl(o);
   hsaldo.textContent=brl(i-o);
 
-  date.textContent=
-    new Date().toLocaleDateString('pt-BR');
+  date.textContent=new Date().toLocaleDateString('pt-BR');
+  try{
+    if(window.AndroidWidget&&window.AndroidWidget.update){
+      const recent=items.slice().sort((x,y)=>(y.date||'').localeCompare(x.date||'')||Number(y.id)-Number(x.id)).slice(0,5).map(x=>(x.type==='in'?'↓ ':'↑ ')+x.desc+'   '+(x.type==='in'?'+ ':'− ')+brl(x.value)+'\n'+(x.date===td?'Hoje':x.date.split('-').reverse().join('/'))+' • '+(x.time||'')).join('\n');
+      window.AndroidWidget.update(brl(a-b),brl(i),brl(o),recent||'Nenhum lançamento ainda.');
+    }
+  }catch(e){}
 
   const g={};
 
