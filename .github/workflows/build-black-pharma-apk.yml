@@ -1,4 +1,4 @@
-name: Build Black Pharma APK
+name: Build Black Pharma Signed APK
 on:
   workflow_dispatch:
   push:
@@ -18,8 +18,23 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - run: cd android && gradle assembleDebug
+      - name: Check signing configuration
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BP_KEYSTORE_BASE64 }}
+          BP_STORE_PASSWORD: ${{ secrets.BP_STORE_PASSWORD }}
+          BP_KEY_PASSWORD: ${{ secrets.BP_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || { echo "Missing BP_KEYSTORE_BASE64"; exit 1; }
+          test -n "$BP_STORE_PASSWORD" || { echo "Missing BP_STORE_PASSWORD"; exit 1; }
+          test -n "$BP_KEY_PASSWORD" || { echo "Missing BP_KEY_PASSWORD"; exit 1; }
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/black-pharma-release.jks
+      - name: Build signed release
+        env:
+          BP_KEYSTORE_PATH: black-pharma-release.jks
+          BP_STORE_PASSWORD: ${{ secrets.BP_STORE_PASSWORD }}
+          BP_KEY_PASSWORD: ${{ secrets.BP_KEY_PASSWORD }}
+        run: cd android && gradle assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: Black-Pharma-Pedidos-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Black-Pharma-Pedidos-Release-APK
+          path: android/app/build/outputs/apk/release/app-release.apk
